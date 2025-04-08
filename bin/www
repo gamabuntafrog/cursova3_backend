@@ -1,0 +1,95 @@
+#!/usr/bin/env node
+
+/**
+ * Module dependencies.
+ */
+var app = require("../app");
+var debug = require("debug")("your-project:server");
+var http = require("http");
+
+/**
+ * Get port from environment and store in Express.
+ */
+var port = normalizePort(process.env.PORT || "3000");
+app.set("port", port);
+
+/**
+ * Create HTTP server.
+ */
+var server = http.createServer(app);
+
+/**
+ * Listen on provided port, on all network interfaces.
+ */
+server.listen(port);
+server.on("error", onError);
+server.on("listening", onListening);
+
+/**
+ * Socket.io integration
+ */
+var { Server } = require("socket.io");
+var io = new Server(server, { cors: { origin: "*" } });
+
+app.locals.io = io;
+
+io.on("connection", function (socket) {
+  console.log("Новий WebSocket клієнт підключився");
+
+  socket.on("joinLesson", function (lessonId) {
+    socket.join("lesson_" + lessonId);
+    console.log("Клієнт приєднався до кімнати: lesson_" + lessonId);
+  });
+
+  socket.on("disconnect", function () {
+    console.log("Клієнт відключився");
+  });
+});
+
+/**
+ * Normalize a port into a number, string, or false.
+ */
+function normalizePort(val) {
+  var port = parseInt(val, 10);
+  if (isNaN(port)) {
+    // Іменований канал
+    return val;
+  }
+  if (port >= 0) {
+    // Нормальний порт
+    return port;
+  }
+  return false;
+}
+
+/**
+ * Event listener for HTTP server "error" event.
+ */
+function onError(error) {
+  if (error.syscall !== "listen") {
+    throw error;
+  }
+  var bind = typeof port === "string" ? "Pipe " + port : "Port " + port;
+  // Обробка конкретних помилок
+  switch (error.code) {
+    case "EACCES":
+      console.error(bind + " вимагає підвищених привілеїв");
+      process.exit(1);
+      break;
+    case "EADDRINUSE":
+      console.error(bind + " вже використовується");
+      process.exit(1);
+      break;
+    default:
+      throw error;
+  }
+}
+
+/**
+ * Event listener for HTTP server "listening" event.
+ */
+function onListening() {
+  var addr = server.address();
+  var bind = typeof addr === "string" ? "pipe " + addr : "port " + addr.port;
+  debug("Listening on " + bind);
+}
